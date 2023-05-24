@@ -1380,6 +1380,7 @@ dependencies = [
 name = "common_types"
 version = "1.2.0"
 dependencies = [
+ "ahash 0.8.3",
  "arrow 38.0.0",
  "arrow_ext",
  "byteorder",
@@ -1390,6 +1391,7 @@ dependencies = [
  "murmur3",
  "paste 1.0.12",
  "prost",
+ "rand 0.8.5",
  "serde",
  "serde_json",
  "snafu 0.6.10",
