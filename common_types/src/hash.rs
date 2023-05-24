@@ -16,7 +16,7 @@ pub fn hash64(mut bytes: &[u8]) -> u64 {
 
 #[cfg(test)]
 mod test {
-    use std::hash::{Hash, Hasher};
+    use std::{hash::{Hash, Hasher}, collections::hash_map::DefaultHasher};
 
     use murmur3::murmur3_32;
 
@@ -78,6 +78,12 @@ mod test {
             x.hash(&mut hasher);
             hasher.finish()
         };
+        let defalut_hash = |x: &str| -> u64 {
+            let mut hasher = DefaultHasher::new();
+            x.hash(&mut hasher);
+            hasher.finish()
+        };
+        test_hash_function(defalut_hash, 10000, 10);
         test_hash_function(a_hash, 10000, 10);
         let murmur_hash = |x: &str| -> u64 { hash64(x.as_bytes()) };
         test_hash_function(murmur_hash, 10000, 10)
