@@ -1064,6 +1064,7 @@ impl<R: Read> StreamReader<R> {
         let message = crate::root_as_message(vecs).map_err(|err| {
             ArrowError::IoError(format!("Unable to get root as message: {err:?}"))
         })?;
+        println!("message: {:?}", message);
 
         match message.header_type() {
             crate::MessageHeader::Schema => Err(ArrowError::IoError(
@@ -1142,10 +1143,37 @@ mod tests {
 
     use super::*;
 
-    use arrow_array::builder::{PrimitiveRunBuilder, UnionBuilder};
+    use arrow_array::builder::{
+        PrimitiveRunBuilder, StringDictionaryBuilder, UnionBuilder,
+    };
     use arrow_array::types::*;
     use arrow_buffer::ArrowNativeType;
     use arrow_data::ArrayDataBuilder;
+
+    fn create_dictionary_record_batch() -> RecordBatch {
+        let col4 = Field::new(
+            "dic",
+            DataType::Dictionary(Box::new(DataType::Int32), Box::new(DataType::Utf8)),
+            false,
+        );
+        let col6 = Field::new(
+            "add_dic",
+            DataType::Dictionary(Box::new(DataType::Int32), Box::new(DataType::Utf8)),
+            true,
+        );
+        let schema = Schema::new(vec![col4, col6]);
+        let mut builder = StringDictionaryBuilder::<Int32Type>::new();
+        builder.append_value("d1");
+        builder.append_value("d2");
+        let dic = builder.finish();
+        let mut builder = StringDictionaryBuilder::<Int32Type>::new();
+        builder.append_null();
+        builder.append_value("d3");
+        let add_dic = builder.finish();
+
+        RecordBatch::try_new(Arc::new(schema), vec![Arc::new(dic), Arc::new(add_dic)])
+            .unwrap()
+    }
 
     fn create_test_projection_schema() -> Schema {
         // define field types
@@ -1282,6 +1310,25 @@ mod tests {
             ],
         )
         .unwrap()
+    }
+
+    #[test]
+    fn test_ipc_encode_decode_with_dicitonary_encode() {
+        let batch = create_dictionary_record_batch();
+
+        let buffer: Vec<u8> = Vec::new();
+        let mut stream_writer =
+            crate::writer::StreamWriter::try_new(buffer, &batch.schema()).unwrap();
+        stream_writer.write(&batch).unwrap();
+
+        let encoded_bytes = stream_writer.into_inner().unwrap();
+
+        let stream_reader =
+            StreamReader::try_new(std::io::Cursor::new(encoded_bytes), None).unwrap();
+
+        stream_reader
+            .collect::<std::result::Result<Vec<RecordBatch>, _>>()
+            .unwrap();
     }
 
     #[test]
